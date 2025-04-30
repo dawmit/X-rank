@@ -25,8 +25,9 @@ This repository contains an implementation of the CP-ALS-QR-Cyclic algorithm for
    addpath('/path/to/CP-ALS-QR-Cyclic')
    ```
 3. Ensure the MATLAB Tensor Toolbox is installed and added to your path
+```
 
-## Usage
+### Usage
 
 ### Basic Usage
 
@@ -35,8 +36,20 @@ This repository contains an implementation of the CP-ALS-QR-Cyclic algorithm for
 X = tensor(randn([5, 5, 5]));
 
 % Define group elements for symmetry
-G_GL = create_GL_group(5);  % GL(n)³ group elements
-G_S3 = create_S3_group();   % S₃ group elements
+% Create GL(n)³ generators
+GL_generators = {
+    {eye(5), eye(5), eye(5)},  % Identity
+    {2*eye(5), 0.5*eye(5), eye(5)}  % Simple scaling
+};
+
+% Create S₃ generators
+S3_generators = {
+    [2, 1, 3],  % Swap first two indices
+    [1, 3, 2]   % Swap last two indices
+};
+
+% Generate group elements
+[G_GL, G_S3] = define_groups(GL_generators, S3_generators);
 
 % Compute CP decomposition with rank 3
 [P, Uinit, output] = cp_als_qr_cyclic(X, 3, G_GL, G_S3);
@@ -54,8 +67,18 @@ opts.init = 'nvecs';          % SVD-based initialization
 opts.printitn = 10;           % Print progress every 10 iterations
 opts.errmethod = 'full';      % Error calculation method
 
-% Compute CP decomposition with custom options
-[P, Uinit, output] = cp_als_qr_cyclic(X, 3, G_GL, G_S3, opts);
+% Create initial guess manually (optional)
+n = 5;  % Tensor dimension
+R = 3;  % Decomposition rank
+len_GL = length(G_GL);
+len_S3 = length(G_S3);
+Uinit = cell(3,1);
+Uinit{1} = rand(n^2, len_GL*len_S3*R);  % Initialize first factor
+Uinit{2} = rand(n^2, len_GL*len_S3*R);  % Initialize second factor
+Uinit{3} = rand(n^2, len_GL*len_S3*R);  % Initialize third factor
+
+% Compute CP decomposition with custom options and initialization
+[P, ~, output] = cp_als_qr_cyclic(X, R, G_GL, G_S3, 'init', Uinit, opts);
 ```
 
 ## Algorithm Details
@@ -101,6 +124,20 @@ The `symmetrize_tensor` function enforces symmetry constraints on the tensor fac
 
 This ensures the resulting tensor respects the symmetry constraints defined by the provided group actions.
 
+### Group Theory Background
+
+The symmetrization uses two types of group actions:
+
+1. **GL(n)³ Actions**: Linear transformations that "sandwich" each factor matrix
+   - For each factor A, B, C, transformations are applied as (U⋅A⋅V⁻¹, V⋅B⋅W⁻¹, W⋅C⋅U⁻¹)
+   - These preserve the multilinear structure of the tensor
+
+2. **S₃ Actions**: Permutations of the tensor indices
+   - For example, permutation [2,3,1] transforms (A,B,C) to (C,A,B)
+   - Odd permutations also require transposition of all matrices
+
+The combination of these group actions enables enforcing various symmetry patterns in the decomposition.
+
 ## Performance Notes
 
 - The algorithm uses QR decomposition instead of normal equations for improved numerical stability
@@ -113,36 +150,6 @@ This ensures the resulting tensor respects the symmetry constraints defined by t
   - `t_lamb`: Lambda calculations and normalization
   - `t_err`: Error calculation
 
-## Applications
-
-This algorithm is particularly useful for:
-
-- Matrix multiplication tensor decomposition
-- Quantum information theory
-- Invariant feature extraction
-- Signal processing with symmetry constraints
-- Computational chemistry (molecular symmetry)
-
-## Citation
-
-If you use this code in your research, please cite:
-
-```
-@article{viviano2021cp,
-  title={CP Decomposition for Tensors via Alternating Least Squares with QR Decomposition},
-  author={Viviano, Irina and Minster, Rachel},
-  year={2021}
-}
-```
-
-## References
-
-1. Kolda, T. G., & Bader, B. W. (2009). Tensor decompositions and applications. SIAM review, 51(3), 455-500.
-2. Phan, A. H., Tichavský, P., & Cichocki, A. (2012). On fast computation of gradients for CANDECOMP/PARAFAC algorithms. arXiv preprint arXiv:1204.1586.
-
-## License
-
-This software is provided for research purposes only. Check the LICENSE file for more details.
 
 ## Contributors
 
